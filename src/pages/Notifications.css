@@ -1,0 +1,153 @@
+.notifications-page {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 50px 20px;
+}
+
+.notifications-container {
+  max-width: 900px;
+  margin: auto;
+}
+
+.notifications-header {
+  text-align: center;
+  margin-bottom: 35px;
+}
+
+.notifications-label {
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+}
+
+.notifications-header h1 {
+  font-size: 36px;
+  margin: 10px 0;
+}
+
+.notifications-header p:last-child {
+  color: #64748b;
+}
+
+.no-notifications {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 60px 25px;
+  text-align: center;
+}
+
+.notification-icon {
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.no-notifications h2 {
+  margin-bottom: 8px;
+}
+
+.no-notifications p {
+  color: #64748b;
+  max-width: 520px;
+  margin: auto;
+  line-height: 1.6;
+}
+
+.notification-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.notification-card {
+  display: flex;
+  gap: 20px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.04);
+}
+
+.notification-card-icon {
+  width: 55px;
+  height: 55px;
+  min-width: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #dbeafe;
+  border-radius: 50%;
+  font-size: 25px;
+}
+
+.notification-content {
+  flex: 1;
+}
+
+.notification-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+}
+
+.notification-title-row h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.notification-match {
+  background: #dcfce7;
+  color: #15803d;
+  padding: 7px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.notification-content p {
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.notification-location {
+  font-size: 14px;
+}
+
+.notification-btn {
+  margin-top: 8px;
+  padding: 11px 18px;
+  border: none;
+  border-radius: 9px;
+  background: #2563eb;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.notification-btn:hover {
+  background: #1d4ed8;
+}
+
+@media (max-width: 700px) {
+  .notifications-page {
+    padding: 30px 15px;
+  }
+
+  .notifications-header h1 {
+    font-size: 30px;
+  }
+
+  .notification-card {
+    flex-direction: column;
+  }
+
+  .notification-title-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

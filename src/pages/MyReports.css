@@ -1,0 +1,396 @@
+
+.my-reports-page {
+
+  min-height: 100vh;
+
+  background: #f8fafc;
+
+  padding: 50px 20px;
+
+}
+
+.my-reports-container {
+
+  max-width: 900px;
+
+  margin: auto;
+
+}
+
+.my-reports-header {
+
+  text-align: center;
+
+  margin-bottom: 35px;
+
+}
+
+.my-reports-label {
+
+  color: #2563eb;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+  letter-spacing: 1.5px;
+
+}
+
+.my-reports-header h1 {
+
+  font-size: 36px;
+
+  margin: 10px 0;
+
+}
+
+.my-reports-header p:last-child {
+
+  color: #64748b;
+
+}
+
+
+/* ============================= */
+/* Search & Filters */
+/* ============================= */
+
+.reports-filters {
+
+  display: flex;
+
+  gap: 12px;
+
+  margin-bottom: 25px;
+
+  align-items: center;
+
+}
+
+.search-box {
+
+  flex: 1;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  padding: 0 14px;
+
+  height: 45px;
+
+}
+
+.search-box span {
+
+  font-size: 16px;
+
+}
+
+.search-box input {
+
+  width: 100%;
+
+  border: none;
+
+  outline: none;
+
+  font-size: 14px;
+
+  color: #1e293b;
+
+  background: transparent;
+
+}
+
+.search-box input::placeholder {
+
+  color: #94a3b8;
+
+}
+
+.reports-filters select {
+
+  height: 45px;
+
+  padding: 0 35px 0 12px;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  background: white;
+
+  color: #1e293b;
+
+  font-size: 14px;
+
+  cursor: pointer;
+
+  outline: none;
+
+}
+
+.reports-filters select:focus {
+
+  border-color: #2563eb;
+
+}
+
+
+/* ============================= */
+/* No Reports */
+/* ============================= */
+
+.no-reports {
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 16px;
+
+  padding: 60px 20px;
+
+  text-align: center;
+
+}
+
+.no-reports-icon {
+
+  font-size: 45px;
+
+  margin-bottom: 15px;
+
+}
+
+.no-reports h2 {
+
+  margin-bottom: 8px;
+
+}
+
+.no-reports p {
+
+  color: #64748b;
+
+}
+
+
+/* ============================= */
+/* Reports List */
+/* ============================= */
+
+.reports-list {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 20px;
+
+}
+
+.report-card {
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 16px;
+
+  padding: 25px;
+
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.04);
+
+}
+
+.report-card-top {
+
+  display: flex;
+
+  justify-content: space-between;
+
+  align-items: center;
+
+  margin-bottom: 15px;
+
+}
+
+.report-badge,
+
+.report-status {
+
+  padding: 6px 10px;
+
+  border-radius: 20px;
+
+  font-size: 12px;
+
+  font-weight: 700;
+
+}
+
+.lost-badge {
+
+  background: #fee2e2;
+
+  color: #dc2626;
+
+}
+
+.found-badge {
+
+  background: #dcfce7;
+
+  color: #16a34a;
+
+}
+
+.report-status {
+
+  background: #fef3c7;
+
+  color: #b45309;
+
+}
+
+
+/* Recovered Status */
+
+.recovered-status {
+
+  background: #dcfce7;
+
+  color: #16a34a;
+
+}
+
+.report-card h2 {
+
+  margin: 0 0 20px;
+
+  font-size: 24px;
+
+}
+
+.report-details {
+
+  display: grid;
+
+  grid-template-columns: repeat(3, 1fr);
+
+  gap: 15px;
+
+  margin-bottom: 20px;
+
+}
+
+.report-details div {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 5px;
+
+}
+
+.report-details strong,
+
+.report-description strong {
+
+  font-size: 13px;
+
+  color: #64748b;
+
+}
+
+.report-details span {
+
+  font-size: 14px;
+
+  color: #1e293b;
+
+}
+
+.report-description {
+
+  border-top: 1px solid #e5e7eb;
+
+  padding-top: 15px;
+
+}
+
+.report-description p {
+
+  color: #475569;
+
+  margin-top: 6px;
+
+  line-height: 1.6;
+
+}
+
+
+/* ============================= */
+/* Mobile Responsive */
+/* ============================= */
+
+@media (max-width: 600px) {
+
+  .my-reports-page {
+
+    padding: 30px 15px;
+
+  }
+
+  .my-reports-header h1 {
+
+    font-size: 30px;
+
+  }
+
+  .reports-filters {
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+  }
+
+  .search-box {
+
+    width: auto;
+
+  }
+
+  .reports-filters select {
+
+    width: 100%;
+
+  }
+
+  .report-details {
+
+    grid-template-columns: 1fr;
+
+  }
+
+  .report-card {
+
+    padding: 20px;
+
+  }
+
+}
+

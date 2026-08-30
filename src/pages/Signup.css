@@ -1,0 +1,123 @@
+.signup-page {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 30px;
+}
+
+.signup-card {
+  width: 100%;
+  max-width: 450px;
+  background: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  text-align: center;
+}
+
+.signup-logo {
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto 20px;
+  background: #eff6ff;
+  border-radius: 50%;
+  font-size: 30px;
+}
+
+.signup-card h1 {
+  font-size: 30px;
+  margin-bottom: 8px;
+}
+
+.signup-subtitle {
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 30px;
+}
+
+.signup-card .input-group {
+  text-align: left;
+  margin-bottom: 18px;
+}
+
+.signup-card .input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.signup-card .input-group input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 15px;
+  outline: none;
+}
+
+.signup-card .input-group input:focus {
+  border-color: #2563eb;
+}
+
+.signup-card .password-box {
+  position: relative;
+}
+
+.signup-card .password-box input {
+  padding-right: 70px;
+}
+
+.signup-card .show-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #2563eb;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.signup-submit {
+  width: 100%;
+  padding: 14px;
+  margin-top: 5px;
+  border: none;
+  border-radius: 9px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.signup-submit:hover {
+  background: #1d4ed8;
+}
+
+.login-text {
+  margin-top: 25px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.login-text a {
+  color: #2563eb;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.error-message {
+  color: #dc2626;
+  font-size: 13px;
+  margin-top: 6px;
+  margin-bottom: 0;
+  text-align: left;
+}
