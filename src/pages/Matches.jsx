@@ -676,9 +676,9 @@ function Matches() {
                       }}
                     >
 
-                      🎉 <strong>
-                        Aryan has accepted your contact request!
-                      </strong>
+                       🎉 <strong>
+                       {request.finderName} has accepted your contact request!
+                          </strong>
 
                       <br /><br />
 
