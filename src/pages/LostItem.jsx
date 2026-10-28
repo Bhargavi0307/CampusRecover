@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import "./LostItem.css";
 
 function LostItem() {
@@ -11,32 +11,37 @@ function LostItem() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(""); // preview साठी (base64)
+  const [photoFile, setPhotoFile] = useState(null); // actual file, upload साठी
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
 
     if (!file) {
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
 
-    // Allow only images
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file.");
       e.target.value = "";
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
 
-    // Limit photo size to 2 MB
     if (file.size > 2 * 1024 * 1024) {
       alert("Photo size must be less than 2 MB.");
       e.target.value = "";
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
+
+    setPhotoFile(file);
 
     const reader = new FileReader();
 
@@ -47,7 +52,30 @@ function LostItem() {
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  // ============================
+  // UPLOAD PHOTO TO SUPABASE STORAGE
+  // ============================
+  const uploadPhoto = async (file, userId) => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("item-photos")
+      .upload(fileName, file);
+
+    if (error) {
+      console.error("Upload error:", error);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("item-photos")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -104,77 +132,150 @@ function LostItem() {
       return;
     }
 
-    // Get logged-in user
-    const loggedInUser = JSON.parse(
-      localStorage.getItem("loggedInUser")
-    );
+    setLoading(true);
 
-    if (!loggedInUser) {
-      alert("Please login first.");
-      navigate("/login");
-      return;
+    try {
+      // Get currently logged-in Supabase user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Auth error:", userError);
+        alert("Unable to verify your login. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      if (!user) {
+        alert("Please login first.");
+        navigate("/login");
+        return;
+      }
+
+      console.log("Current Supabase User ID:", user.id);
+
+      // Get user's profile
+      const { data: profile, error: profileError } =
+        await supabase
+          .from("profiles")
+          .select("name, college_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+      if (profileError) {
+        console.error(
+          "Profile fetch error:",
+          profileError
+        );
+
+        alert(
+          `Profile error: ${profileError.message}`
+        );
+
+        return;
+      }
+
+      if (!profile) {
+        console.error(
+          "Profile not found for user ID:",
+          user.id
+        );
+
+        alert(
+          "Your profile was not found. Please contact support."
+        );
+
+        return;
+      }
+
+      console.log("Profile found:", profile);
+
+      // ============================
+      // UPLOAD PHOTO FIRST (if one was selected)
+      // ============================
+      let photoUrl = null;
+
+      if (photoFile) {
+        photoUrl = await uploadPhoto(photoFile, user.id);
+
+        if (!photoUrl) {
+          alert(
+            "Photo upload failed. Please try again or submit without a photo."
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Insert report into Supabase
+      const { data: insertedReport, error: reportError } =
+        await supabase
+          .from("lost_reports")
+          .insert([
+            {
+              user_id: user.id,
+              user_email:
+                profile.college_id || user.email,
+              user_name:
+                profile.name || "User",
+              item_name: itemName.trim(),
+              category: category,
+              location: location.trim(),
+              lost_date: date,
+              description: description.trim(),
+              photo: photoUrl, // आता base64 नाही, URL जातोय
+              status: "Pending",
+            },
+          ])
+          .select()
+          .single();
+
+      if (reportError) {
+        console.error(
+          "Lost report submission error:",
+          reportError
+        );
+
+        alert(
+          `Report submission failed: ${reportError.message}`
+        );
+
+        return;
+      }
+
+      console.log(
+        "Lost report successfully created:",
+        insertedReport
+      );
+
+      alert(
+        "Lost item report submitted successfully! 🎉"
+      );
+
+      // Clear form
+      setItemName("");
+      setCategory("");
+      setLocation("");
+      setDate("");
+      setDescription("");
+      setPhoto("");
+      setPhotoFile(null);
+      setErrors({});
+
+      // Go back to dashboard
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Lost item error:", error);
+
+      alert(
+        "Something went wrong. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const newReport = {
-      id: Date.now(),
-      type: "Lost",
-      userEmail: loggedInUser.collegeId,
-      userName: loggedInUser.name,
-      itemName: itemName.trim(),
-      category,
-      location: location.trim(),
-      date,
-      description: description.trim(),
-      photo,
-      status: "Pending",
-    };
-
-    // Save report
-    const existingReports =
-      JSON.parse(localStorage.getItem("reports")) || [];
-
-    localStorage.setItem(
-      "reports",
-      JSON.stringify([
-        ...existingReports,
-        newReport,
-      ])
-    );
-
-    // Save activity
-    const existingActivities =
-      JSON.parse(localStorage.getItem("activities")) || [];
-
-    const newActivity = {
-      id: Date.now() + 1,
-      type: "Lost",
-      itemName: newReport.itemName,
-      userEmail: loggedInUser.collegeId,
-      message: `You reported a lost item — ${newReport.itemName}`,
-      time: new Date().toLocaleString(),
-    };
-
-    localStorage.setItem(
-      "activities",
-      JSON.stringify([
-        ...existingActivities,
-        newActivity,
-      ])
-    );
-
-    alert("Lost item report submitted successfully!");
-
-    // Clear form
-    setItemName("");
-    setCategory("");
-    setLocation("");
-    setDate("");
-    setDescription("");
-    setPhoto("");
-    setErrors({});
-
-    // Go back to dashboard
-    navigate("/dashboard");
   };
 
   return (
@@ -226,7 +327,6 @@ function LostItem() {
             )}
 
           </div>
-
 
           {/* Category */}
           <div className="form-group">
@@ -284,7 +384,6 @@ function LostItem() {
 
           </div>
 
-
           {/* Location */}
           <div className="form-group">
 
@@ -309,7 +408,6 @@ function LostItem() {
 
           </div>
 
-
           {/* Date */}
           <div className="form-group">
 
@@ -320,7 +418,11 @@ function LostItem() {
             <input
               type="date"
               value={date}
-              max={new Date().toISOString().split("T")[0]}
+              max={
+                new Date()
+                  .toISOString()
+                  .split("T")[0]
+              }
               onChange={(e) =>
                 setDate(e.target.value)
               }
@@ -333,7 +435,6 @@ function LostItem() {
             )}
 
           </div>
-
 
           {/* Description */}
           <div className="form-group">
@@ -358,7 +459,6 @@ function LostItem() {
             )}
 
           </div>
-
 
           {/* Photo */}
           <div className="form-group">
@@ -391,13 +491,15 @@ function LostItem() {
 
           </div>
 
-
           {/* Submit */}
           <button
             type="submit"
             className="lost-submit-btn"
+            disabled={loading}
           >
-            🔴 Submit Lost Report
+            {loading
+              ? "Submitting..."
+              : "🔴 Submit Lost Report"}
           </button>
 
         </form>

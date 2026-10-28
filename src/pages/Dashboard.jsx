@@ -2,61 +2,225 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "./Dashboard.css";
+import { supabase } from "../supabaseClient";
 import { getPossibleMatches } from "../matchUtils";
 
 function Dashboard() {
   const navigate = useNavigate();
 
-  // Protect Dashboard
-  useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn");
+  const [reports, setReports] = useState([]);
+  const [allReports, setAllReports] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-    if (isLoggedIn !== "true") {
-      navigate("/login");
-    }
+  // Load Dashboard Data
+  useEffect(() => {
+    const loadDashboard = async () => {
+      try {
+        // Get currently logged-in Supabase user
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
+
+        if (userError || !user) {
+          navigate("/login");
+          return;
+        }
+
+        /*
+         * ------------------------------------------------
+         * 1. GET CURRENT USER'S LOST REPORTS
+         * ------------------------------------------------
+         */
+
+        const {
+          data: lostReports,
+          error: lostError,
+        } = await supabase
+          .from("lost_reports")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (lostError) {
+          console.error(
+            "Lost reports fetch error:",
+            lostError
+          );
+        }
+
+        /*
+         * ------------------------------------------------
+         * 2. GET CURRENT USER'S FOUND REPORTS
+         * ------------------------------------------------
+         */
+
+        const {
+          data: foundReports,
+          error: foundError,
+        } = await supabase
+          .from("found_reports")
+          .select("*")
+          .eq("user_id", user.id);
+
+        if (foundError) {
+          console.error(
+            "Found reports fetch error:",
+            foundError
+          );
+        }
+
+        /*
+         * ------------------------------------------------
+         * 3. FORMAT CURRENT USER REPORTS
+         * ------------------------------------------------
+         */
+
+        const formattedLostReports =
+          (lostReports || []).map((report) => ({
+            id: report.id,
+            type: "Lost",
+            userId: report.user_id,
+            userEmail: report.user_email,
+            userName: report.user_name,
+            itemName: report.item_name,
+            category: report.category,
+            location: report.location,
+            date: report.lost_date,
+            description: report.description,
+            photo: report.photo,
+            status: report.status,
+          }));
+
+        const formattedFoundReports =
+          (foundReports || []).map((report) => ({
+            id: report.id,
+            type: "Found",
+            userId: report.user_id,
+            userEmail: report.user_email,
+            userName: report.user_name,
+            itemName: report.item_name,
+            category: report.category,
+            location: report.location,
+            date: report.found_date,
+            description: report.description,
+            photo: report.photo,
+            status: report.status,
+          }));
+
+        const userReports = [
+          ...formattedLostReports,
+          ...formattedFoundReports,
+        ];
+
+        setReports(userReports);
+
+        /*
+         * ------------------------------------------------
+         * 4. GET ALL LOST REPORTS
+         * Needed for Possible Matches
+         * ------------------------------------------------
+         */
+
+        const {
+          data: allLostReports,
+          error: allLostError,
+        } = await supabase
+          .from("lost_reports")
+          .select("*");
+
+        if (allLostError) {
+          console.error(
+            "All lost reports fetch error:",
+            allLostError
+          );
+        }
+
+        /*
+         * ------------------------------------------------
+         * 5. GET ALL FOUND REPORTS
+         * Needed for Possible Matches
+         * ------------------------------------------------
+         */
+
+        const {
+          data: allFoundReports,
+          error: allFoundError,
+        } = await supabase
+          .from("found_reports")
+          .select("*");
+
+        if (allFoundError) {
+          console.error(
+            "All found reports fetch error:",
+            allFoundError
+          );
+        }
+
+        /*
+         * ------------------------------------------------
+         * 6. FORMAT ALL REPORTS
+         * ------------------------------------------------
+         */
+
+        const formattedAllLost =
+          (allLostReports || []).map((report) => ({
+            id: report.id,
+            type: "Lost",
+            userId: report.user_id,
+            userEmail: report.user_email,
+            userName: report.user_name,
+            itemName: report.item_name,
+            category: report.category,
+            location: report.location,
+            date: report.lost_date,
+            description: report.description,
+            photo: report.photo,
+            status: report.status,
+          }));
+
+        const formattedAllFound =
+          (allFoundReports || []).map((report) => ({
+            id: report.id,
+            type: "Found",
+            userId: report.user_id,
+            userEmail: report.user_email,
+            userName: report.user_name,
+            itemName: report.item_name,
+            category: report.category,
+            location: report.location,
+            date: report.found_date,
+            description: report.description,
+            photo: report.photo,
+            status: report.status,
+          }));
+
+        const combinedAllReports = [
+          ...formattedAllLost,
+          ...formattedAllFound,
+        ];
+
+        setAllReports(combinedAllReports);
+
+      } catch (error) {
+        console.error(
+          "Dashboard loading error:",
+          error
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboard();
   }, [navigate]);
 
-  // Get logged-in user
-  const loggedInUser = JSON.parse(
-    localStorage.getItem("loggedInUser")
-  );
 
-  const currentUserEmail =
-    loggedInUser?.collegeId || "";
+  /*
+   * ------------------------------------------------
+   * STATISTICS
+   * ------------------------------------------------
+   */
 
-  // Get ALL reports from localStorage
-  const allReports = JSON.parse(
-    localStorage.getItem("reports")
-  ) || [];
-
-  // Only logged-in user's reports for dashboard statistics
-  const [reports] = useState(() => {
-    if (!loggedInUser) {
-      return [];
-    }
-
-    return allReports.filter(
-      (report) =>
-        report.userEmail === loggedInUser.collegeId
-    );
-  });
-
-  // Only logged-in user's activities
-  const [activities] = useState(() => {
-    const allActivities =
-      JSON.parse(localStorage.getItem("activities")) || [];
-
-    if (!loggedInUser) {
-      return [];
-    }
-
-    return allActivities.filter(
-      (activity) =>
-        activity.userEmail === loggedInUser.collegeId
-    );
-  });
-
-  // Calculate statistics
   const lostReports = reports.filter(
     (report) => report.type === "Lost"
   );
@@ -69,22 +233,64 @@ function Dashboard() {
     (report) => report.status === "Recovered"
   );
 
-  // Possible matches
-  // Use ALL reports because matching should compare
-  // user's lost items with other users' found items.
-  const possibleMatches = getPossibleMatches(allReports).filter(
-    (match) =>
-      match.lost.userEmail === currentUserEmail
+
+  /*
+   * ------------------------------------------------
+   * POSSIBLE MATCHES
+   *
+   * Use ALL users' reports.
+   * matchUtils will find matches for lost/found items.
+   * ------------------------------------------------
+   */
+
+  const possibleMatches = getPossibleMatches(
+    allReports
   );
 
-  // Logout
-  const handleLogout = () => {
+
+  /*
+   * ------------------------------------------------
+   * LOGOUT
+   * ------------------------------------------------
+   */
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("userEmail");
     localStorage.removeItem("loggedInUser");
 
     navigate("/login");
   };
+
+
+  /*
+   * ------------------------------------------------
+   * LOADING
+   * ------------------------------------------------
+   */
+
+  if (loading) {
+    return (
+      <div className="dashboard-page">
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            minHeight: "100vh",
+            fontSize: "18px",
+          }}
+        >
+          Loading dashboard...
+        </div>
+
+      </div>
+    );
+  }
+
 
   return (
     <div className="dashboard-page">
@@ -98,36 +304,37 @@ function Dashboard() {
 
         <div className="dashboard-nav">
 
-          {/* Dashboard */}
           <span className="active-nav">
             Dashboard
           </span>
 
-          {/* My Reports */}
           <span
-            onClick={() => navigate("/my-reports")}
+            onClick={() =>
+              navigate("/my-reports")
+            }
             style={{ cursor: "pointer" }}
           >
             My Reports
           </span>
 
-          {/* Possible Matches */}
           <span
-            onClick={() => navigate("/matches")}
+            onClick={() =>
+              navigate("/matches")
+            }
             style={{ cursor: "pointer" }}
           >
             Possible Matches 🎯
           </span>
 
-          {/* Notifications */}
           <span
-            onClick={() => navigate("/notifications")}
+            onClick={() =>
+              navigate("/notifications")
+            }
             style={{ cursor: "pointer" }}
           >
             Notifications 🔔
           </span>
 
-          {/* Logout */}
           <button
             className="logout-btn"
             onClick={handleLogout}
@@ -188,7 +395,9 @@ function Dashboard() {
 
               <button
                 className="lost-btn"
-                onClick={() => navigate("/lost-item")}
+                onClick={() =>
+                  navigate("/lost-item")
+                }
               >
                 Report Lost Item →
               </button>
@@ -218,7 +427,9 @@ function Dashboard() {
 
               <button
                 className="found-btn"
-                onClick={() => navigate("/found-item")}
+                onClick={() =>
+                  navigate("/found-item")
+                }
               >
                 Report Found Item →
               </button>
@@ -236,7 +447,9 @@ function Dashboard() {
           {/* Lost */}
           <div
             className="stat-card"
-            onClick={() => navigate("/my-reports")}
+            onClick={() =>
+              navigate("/my-reports")
+            }
             style={{ cursor: "pointer" }}
           >
 
@@ -260,7 +473,9 @@ function Dashboard() {
           {/* Found */}
           <div
             className="stat-card"
-            onClick={() => navigate("/my-reports")}
+            onClick={() =>
+              navigate("/my-reports")
+            }
             style={{ cursor: "pointer" }}
           >
 
@@ -284,7 +499,9 @@ function Dashboard() {
           {/* Matches */}
           <div
             className="stat-card"
-            onClick={() => navigate("/matches")}
+            onClick={() =>
+              navigate("/matches")
+            }
             style={{ cursor: "pointer" }}
           >
 
@@ -308,7 +525,9 @@ function Dashboard() {
           {/* Recovered */}
           <div
             className="stat-card"
-            onClick={() => navigate("/my-reports")}
+            onClick={() =>
+              navigate("/my-reports")
+            }
             style={{ cursor: "pointer" }}
           >
 
@@ -355,7 +574,7 @@ function Dashboard() {
           </div>
 
 
-          {activities.length === 0 ? (
+          {reports.length === 0 ? (
 
             <div className="empty-activity">
 
@@ -377,19 +596,23 @@ function Dashboard() {
 
             <div className="activity-list">
 
-              {activities
+              {reports
                 .slice()
-                .reverse()
+                .sort(
+                  (a, b) =>
+                    new Date(b.date) -
+                    new Date(a.date)
+                )
                 .slice(0, 5)
-                .map((activity) => (
+                .map((report) => (
 
                   <div
                     className="activity-item"
-                    key={activity.id}
+                    key={`${report.type}-${report.id}`}
                   >
 
                     <div className="activity-icon-small">
-                      {activity.type === "Lost"
+                      {report.type === "Lost"
                         ? "🔴"
                         : "🟢"}
                     </div>
@@ -397,11 +620,13 @@ function Dashboard() {
                     <div className="activity-content">
 
                       <p>
-                        {activity.message}
+                        {report.type === "Lost"
+                          ? `You reported a lost item — ${report.itemName}`
+                          : `You reported a found item — ${report.itemName}`}
                       </p>
 
                       <span>
-                        {activity.time}
+                        {report.date}
                       </span>
 
                     </div>

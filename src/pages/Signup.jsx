@@ -1,6 +1,7 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import "./Signup.css";
 
 function Signup() {
@@ -13,10 +14,11 @@ function Signup() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -52,51 +54,59 @@ function Signup() {
 
     setErrors(newErrors);
 
-    // Stop if errors exist
+    // Stop if validation errors exist
     if (Object.keys(newErrors).length > 0) {
       return;
     }
 
-    // Get existing users
-    const existingUsers =
-      JSON.parse(localStorage.getItem("users")) || [];
+    setLoading(true);
 
-    // Check if College ID already exists
-    const userAlreadyExists = existingUsers.some(
-      (user) =>
-        user.collegeId.toLowerCase() ===
-        collegeId.trim().toLowerCase()
-    );
+    try {
+      const email = collegeId.trim().toLowerCase();
 
-    if (userAlreadyExists) {
+      // College Email / ID must be a valid email
+      if (!email.includes("@")) {
+        setErrors({
+          collegeId:
+            "Please enter a valid college email address.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Create account in Supabase Authentication
+      const { error } = await supabase.auth.signUp({
+        email: email,
+        password: password,
+        options: {
+          data: {
+            name: name.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        setErrors({
+          collegeId: error.message,
+        });
+        setLoading(false);
+        return;
+      }
+
+      alert("Account created successfully! 🎉");
+
+      navigate("/login");
+
+    } catch (error) {
+      console.error("Signup error:", error);
+
       setErrors({
         collegeId:
-          "This College ID is already registered.",
+          "Something went wrong. Please try again.",
       });
-      return;
     }
 
-    // Create new user
-    const newUser = {
-      id: Date.now(),
-      name: name.trim(),
-      collegeId: collegeId.trim(),
-      password: password,
-    };
-
-    // Save new user
-    localStorage.setItem(
-      "users",
-      JSON.stringify([
-        ...existingUsers,
-        newUser,
-      ])
-    );
-
-    alert("Account created successfully! 🎉");
-
-    // Go to Login
-    navigate("/login");
+    setLoading(false);
   };
 
   return (
@@ -142,7 +152,6 @@ function Signup() {
 
           </div>
 
-
           {/* College Email / ID */}
           <div className="input-group">
 
@@ -152,7 +161,7 @@ function Signup() {
 
             <input
               type="text"
-              placeholder="Enter your college email or ID"
+              placeholder="Enter your college email"
               value={collegeId}
               onChange={(e) =>
                 setCollegeId(e.target.value)
@@ -166,7 +175,6 @@ function Signup() {
             )}
 
           </div>
-
 
           {/* Password */}
           <div className="input-group">
@@ -214,7 +222,6 @@ function Signup() {
 
           </div>
 
-
           {/* Confirm Password */}
           <div className="input-group">
 
@@ -233,7 +240,9 @@ function Signup() {
                 placeholder="Confirm your password"
                 value={confirmPassword}
                 onChange={(e) =>
-                  setConfirmPassword(e.target.value)
+                  setConfirmPassword(
+                    e.target.value
+                  )
                 }
               />
 
@@ -261,17 +270,18 @@ function Signup() {
 
           </div>
 
-
           {/* Submit */}
           <button
             type="submit"
             className="signup-submit"
+            disabled={loading}
           >
-            Create Account
+            {loading
+              ? "Creating Account..."
+              : "Create Account"}
           </button>
 
         </form>
-
 
         {/* Login */}
         <p className="login-text">

@@ -1,5 +1,7 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import "./Login.css";
 
 function Login() {
@@ -9,10 +11,11 @@ function Login() {
   const [password, setPassword] = useState("");
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
@@ -33,57 +36,67 @@ function Login() {
       return;
     }
 
-    // Get all registered users
-    const existingUsers =
-      JSON.parse(localStorage.getItem("users")) || [];
+    setLoading(true);
 
-    // Check if account exists
-    if (existingUsers.length === 0) {
+    try {
+      const loginEmail = email.trim().toLowerCase();
+
+      // Supabase Authentication Login
+      const { data, error } =
+        await supabase.auth.signInWithPassword({
+          email: loginEmail,
+          password: password,
+        });
+
+      if (error) {
+        setErrors({
+          email: "Invalid email or password.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Login successful
+      if (data.user) {
+        localStorage.setItem("isLoggedIn", "true");
+        localStorage.setItem("userEmail", data.user.email);
+
+        // Get profile information
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", data.user.id)
+            .single();
+
+        if (!profileError && profile) {
+          localStorage.setItem(
+            "loggedInUser",
+            JSON.stringify(profile)
+          );
+        } else {
+          localStorage.setItem(
+            "loggedInUser",
+            JSON.stringify({
+              id: data.user.id,
+              email: data.user.email,
+            })
+          );
+        }
+      }
+
+      alert("Login successful! 🎉");
+
+      navigate("/dashboard");
+    } catch (error) {
+      console.error("Login error:", error);
+
       setErrors({
-        email: "No account found. Please create an account first.",
+        email: "Something went wrong. Please try again.",
       });
-      return;
     }
 
-    // Find user with matching College Email / ID
-    const savedUser = existingUsers.find(
-      (user) =>
-        user.collegeId.toLowerCase() ===
-        email.trim().toLowerCase()
-    );
-
-    // User not found
-    if (!savedUser) {
-      setErrors({
-        email: "No account found with this College Email / ID.",
-      });
-      return;
-    }
-
-    // Check password
-    if (password !== savedUser.password) {
-      setErrors({
-        password: "Invalid password.",
-      });
-      return;
-    }
-
-    // Login successful
-    localStorage.setItem("isLoggedIn", "true");
-    localStorage.setItem(
-      "userEmail",
-      savedUser.collegeId
-    );
-
-    // Save logged-in user's information
-    localStorage.setItem(
-      "loggedInUser",
-      JSON.stringify(savedUser)
-    );
-
-    alert("Login successful! 🎉");
-
-    navigate("/dashboard");
+    setLoading(false);
   };
 
   return (
@@ -130,7 +143,6 @@ function Login() {
 
           </div>
 
-
           {/* Password */}
           <div className="input-group">
 
@@ -176,7 +188,6 @@ function Login() {
 
           </div>
 
-
           {/* Options */}
           <div className="login-options">
 
@@ -191,17 +202,18 @@ function Login() {
 
           </div>
 
-
           {/* Login Button */}
           <button
             type="submit"
             className="login-submit"
+            disabled={loading}
           >
-            Login
+            {loading
+              ? "Logging in..."
+              : "Login"}
           </button>
 
         </form>
-
 
         {/* Signup */}
         <p className="signup-text">
@@ -221,3 +233,4 @@ function Login() {
 }
 
 export default Login;
+

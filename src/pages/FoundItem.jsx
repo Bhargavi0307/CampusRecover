@@ -1,6 +1,6 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "../supabaseClient";
 import "./FoundItem.css";
 
 function FoundItem() {
@@ -11,48 +11,74 @@ function FoundItem() {
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
   const [description, setDescription] = useState("");
-  const [photo, setPhoto] = useState("");
+  const [photo, setPhoto] = useState(""); 
+  const [photoFile, setPhotoFile] = useState(null); // actual file, upload 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
 
     if (!file) {
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
 
-    // Allow only images
     if (!file.type.startsWith("image/")) {
       alert("Please select an image file.");
       e.target.value = "";
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
 
-    // Limit photo size to 2 MB
     if (file.size > 2 * 1024 * 1024) {
       alert("Photo size must be less than 2 MB.");
       e.target.value = "";
       setPhoto("");
+      setPhotoFile(null);
       return;
     }
 
-    const reader = new FileReader();
+    setPhotoFile(file);
 
+    const reader = new FileReader();
     reader.onloadend = () => {
       setPhoto(reader.result);
     };
-
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (e) => {
+  // ============================
+  // UPLOAD PHOTO TO SUPABASE STORAGE
+  // ============================
+  const uploadPhoto = async (file, userId) => {
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+
+    const { error } = await supabase.storage
+      .from("item-photos")
+      .upload(fileName, file);
+
+    if (error) {
+      console.error("Upload error:", error);
+      return null;
+    }
+
+    const { data } = supabase.storage
+      .from("item-photos")
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const newErrors = {};
 
-    // Item Name validation
+    // Item Name
     if (!itemName.trim()) {
       newErrors.itemName = "Please enter the item name.";
     } else if (itemName.trim().length < 2) {
@@ -60,12 +86,12 @@ function FoundItem() {
         "Item name must be at least 2 characters.";
     }
 
-    // Category validation
+    // Category
     if (!category) {
       newErrors.category = "Please select a category.";
     }
 
-    // Location validation
+    // Location
     if (!location.trim()) {
       newErrors.location =
         "Please enter where you found the item.";
@@ -74,7 +100,7 @@ function FoundItem() {
         "Location must be at least 2 characters.";
     }
 
-    // Date validation
+    // Date
     if (!date) {
       newErrors.date = "Please select the date.";
     } else {
@@ -89,7 +115,7 @@ function FoundItem() {
       }
     }
 
-    // Description validation
+    // Description
     if (!description.trim()) {
       newErrors.description =
         "Please describe the item.";
@@ -104,77 +130,140 @@ function FoundItem() {
       return;
     }
 
-    // Get logged-in user
-    const loggedInUser = JSON.parse(
-      localStorage.getItem("loggedInUser")
-    );
+    setLoading(true);
 
-    if (!loggedInUser) {
-      alert("Please login first.");
-      navigate("/login");
-      return;
+    try {
+      // Get authenticated Supabase user
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError) {
+        console.error("Auth error:", userError);
+        alert("Unable to verify your login. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      if (!user) {
+        alert("Your session has expired. Please login again.");
+        navigate("/login");
+        return;
+      }
+
+      // Get profile
+      const {
+        data: profile,
+        error: profileError,
+      } = await supabase
+        .from("profiles")
+        .select("name, college_id")
+        .eq("id", user.id)
+        .single();
+
+      if (profileError) {
+        console.error("Profile error:", profileError);
+
+        alert(
+          "Unable to load your profile. Please try again."
+        );
+
+        return;
+      }
+
+      if (!profile) {
+        alert(
+          "Profile not found. Please contact the administrator."
+        );
+
+        return;
+      }
+
+      // ============================
+      // UPLOAD PHOTO FIRST (if one was selected)
+      // ============================
+      let photoUrl = null;
+
+      if (photoFile) {
+        photoUrl = await uploadPhoto(photoFile, user.id);
+
+        if (!photoUrl) {
+          alert(
+            "Photo upload failed. Please try again or submit without a photo."
+          );
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Insert found report into Supabase
+      const { data: insertedReport, error: reportError } =
+        await supabase
+          .from("found_reports")
+          .insert([
+            {
+              user_id: user.id,
+              user_email:
+                profile.college_id || user.email,
+              user_name:
+                profile.name || "User",
+              item_name: itemName.trim(),
+              category: category,
+              location: location.trim(),
+              found_date: date,
+              description: description.trim(),
+              photo: photoUrl, // आता इथे base64 नाही, URL जातोय
+              status: "Pending",
+            },
+          ])
+          .select()
+          .single();
+
+      if (reportError) {
+        console.error(
+          "Found report submission error:",
+          reportError
+        );
+
+        alert(
+          `Failed to submit your found item report.\n\n${reportError.message}`
+        );
+
+        return;
+      }
+
+      console.log(
+        "Found report successfully saved:",
+        insertedReport
+      );
+
+      alert(
+        "Found item report submitted successfully! 🎉"
+      );
+
+      // Clear form
+      setItemName("");
+      setCategory("");
+      setLocation("");
+      setDate("");
+      setDescription("");
+      setPhoto("");
+      setPhotoFile(null);
+      setErrors({});
+
+      // Go to dashboard
+      navigate("/dashboard");
+
+    } catch (error) {
+      console.error("Found item error:", error);
+
+      alert(
+        "Something went wrong. Please try again."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    const newReport = {
-      id: Date.now(),
-      type: "Found",
-      userEmail: loggedInUser.collegeId,
-      userName: loggedInUser.name,
-      itemName: itemName.trim(),
-      category,
-      location: location.trim(),
-      date,
-      description: description.trim(),
-      photo,
-      status: "Pending",
-    };
-
-    // Save report
-    const existingReports =
-      JSON.parse(localStorage.getItem("reports")) || [];
-
-    localStorage.setItem(
-      "reports",
-      JSON.stringify([
-        ...existingReports,
-        newReport,
-      ])
-    );
-
-    // Save activity
-    const existingActivities =
-      JSON.parse(localStorage.getItem("activities")) || [];
-
-    const newActivity = {
-      id: Date.now() + 1,
-      type: "Found",
-      itemName: newReport.itemName,
-      userEmail: loggedInUser.collegeId,
-      message: `You reported a found item — ${newReport.itemName}`,
-      time: new Date().toLocaleString(),
-    };
-
-    localStorage.setItem(
-      "activities",
-      JSON.stringify([
-        ...existingActivities,
-        newActivity,
-      ])
-    );
-
-    alert("Found item report submitted successfully!");
-
-    // Clear form
-    setItemName("");
-    setCategory("");
-    setLocation("");
-    setDate("");
-    setDescription("");
-    setPhoto("");
-    setErrors({});
-
-    // Go back to dashboard
-    navigate("/dashboard");
   };
 
   return (
@@ -320,7 +409,11 @@ function FoundItem() {
             <input
               type="date"
               value={date}
-              max={new Date().toISOString().split("T")[0]}
+              max={
+                new Date()
+                  .toISOString()
+                  .split("T")[0]
+              }
               onChange={(e) =>
                 setDate(e.target.value)
               }
@@ -375,6 +468,7 @@ function FoundItem() {
 
             {photo && (
               <div style={{ marginTop: "12px" }}>
+
                 <img
                   src={photo}
                   alt="Selected found item"
@@ -386,6 +480,7 @@ function FoundItem() {
                     border: "1px solid #e5e7eb",
                   }}
                 />
+
               </div>
             )}
 
@@ -396,8 +491,11 @@ function FoundItem() {
           <button
             type="submit"
             className="found-submit-btn"
+            disabled={loading}
           >
-            🟢 Submit Found Item
+            {loading
+              ? "Submitting..."
+              : "🟢 Submit Found Item"}
           </button>
 
         </form>
